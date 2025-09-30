@@ -1,0 +1,132 @@
+<div class="container mx-auto mt-8 p-4">
+    <h2 class="text-3xl font-bold mb-6 text-gray-800">Responder Questões</h2>
+
+    <div id="questionsContainer" class="grid grid-cols-1 gap-6">
+        <!-- Questions will be loaded here by JavaScript -->
+    </div>
+
+    <p id="answerMessage" class="text-sm italic mt-4"></p>
+</div>
+
+<script>
+    const questionsContainer = document.getElementById('questionsContainer');
+    const answerMessage = document.getElementById('answerMessage');
+
+    async function fetchQuestionsForUser() {
+        try {
+            const response = await fetch('../api/questions.php');
+            const data = await response.json();
+
+            questionsContainer.innerHTML = ''; // Clear existing questions
+
+            if (data.success && data.questions.length > 0) {
+                data.questions.forEach(question => {
+                    const questionCard = document.createElement('div');
+                    questionCard.className = 'bg-white p-6 rounded-lg shadow-md';
+                    questionCard.innerHTML = `
+                        <h3 class="text-xl font-semibold mb-4">${question.question}</h3>
+                        <form class="answer-form" data-question-id="${question.id}" data-question-type="${question.type}">
+                            ${question.type === 'multiple_choice' ?
+                                question.options.map((option, index) => `
+                                    <div class="mb-2">
+                                        <input type="radio" id="option-${question.id}-${index}" name="answer-${question.id}" value="${option}" class="mr-2">
+                                        <label for="option-${question.id}-${index}">${option}</label>
+                                    </div>
+                                `).join('')
+                                :
+                                `<div class="mb-4">
+                                    <textarea name="answer-${question.id}" id="answer-${question.id}" placeholder="Sua resposta" rows="3" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required></textarea>
+                                </div>`
+                            }
+                            <button type="submit" class="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                                Enviar Resposta
+                            </button>
+                            <p class="answer-feedback text-sm italic mt-2"></p>
+                        </form>
+                    `;
+                    questionsContainer.appendChild(questionCard);
+                });
+                answerMessage.textContent = '';
+            } else if (data.success && data.questions.length === 0) {
+                answerMessage.textContent = 'Nenhuma questão disponível para responder.';
+            } else {
+                answerMessage.textContent = data.message || 'Falha ao carregar questões.';
+            }
+        } catch (error) {
+            console.error('Error fetching questions:', error);
+            answerMessage.textContent = 'Ocorreu um erro ao buscar as questões.';
+        }
+    }
+
+    questionsContainer.addEventListener('submit', async function(event) {
+        if (event.target.classList.contains('answer-form')) {
+            event.preventDefault();
+
+            const form = event.target;
+            const questionId = form.dataset.questionId;
+            const feedbackElement = form.querySelector('.answer-feedback');
+            feedbackElement.textContent = '';
+
+            let submittedAnswer;
+            const questionType = form.dataset.questionType || 'text';
+
+            if (questionType === 'multiple_choice') {
+                const selectedOption = form.querySelector(`input[name="answer-${questionId}"]:checked`);
+                if (!selectedOption) {
+                    feedbackElement.textContent = 'Por favor selecione uma opção.';
+                    feedbackElement.classList.add('text-red-500');
+                    return;
+                }
+                submittedAnswer = selectedOption.value;
+            } else {
+                const inputEl = form.querySelector(`#answer-${questionId}`) || form.querySelector(`textarea[name="answer-${questionId}"]`) || form.querySelector(`input[name="answer-${questionId}"]`);
+                submittedAnswer = inputEl ? inputEl.value.trim() : '';
+                if (!submittedAnswer) {
+                    feedbackElement.textContent = 'Por favor insira uma resposta.';
+                    feedbackElement.classList.add('text-red-500');
+                    return;
+                }
+            }
+
+            try {
+                const response = await fetch('../api/answers.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question_id: questionId, answer: submittedAnswer })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    feedbackElement.textContent = data.message;
+                    if (data.is_correct) {
+                        feedbackElement.classList.remove('text-red-500');
+                        feedbackElement.classList.add('text-green-500');
+                    } else {
+                        feedbackElement.classList.remove('text-green-500');
+                        feedbackElement.classList.add('text-red-500');
+                    }
+                    // Optionally disable the form after answering
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    if (submitBtn) submitBtn.disabled = true;
+                    if (questionType === 'multiple_choice') {
+                        form.querySelectorAll(`input[name="answer-${questionId}"]`).forEach(radio => radio.disabled = true);
+                    } else {
+                        const inputEl = form.querySelector(`#answer-${questionId}`) || form.querySelector(`textarea[name="answer-${questionId}"]`) || form.querySelector(`input[name="answer-${questionId}"]`);
+                        if (inputEl) inputEl.disabled = true;
+                    }
+                } else {
+                    feedbackElement.textContent = data.message || 'Falha ao enviar resposta.';
+                    feedbackElement.classList.remove('text-green-500');
+                    feedbackElement.classList.add('text-red-500');
+                }
+            } catch (error) {
+                console.error('Error submitting answer:', error);
+                feedbackElement.textContent = 'Ocorreu um erro ao enviar sua resposta.';
+                feedbackElement.classList.remove('text-green-500');
+                feedbackElement.classList.add('text-red-500');
+            }
+        }
+    });
+
+    fetchQuestionsForUser(); // Initial load
+</script>

@@ -1,0 +1,197 @@
+<div class="container mx-auto mt-8 p-4">
+    <h2 class="text-3xl font-bold mb-6 text-gray-800">Gerenciar Usuários</h2>
+
+    <!-- Add New User Form -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+    <h3 class="text-xl font-semibold mb-4">Adicionar Novo Usuário</h3>
+        <form id="addUserForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="newUsername" class="block text-gray-700 text-sm font-bold mb-2">Nome de usuário:</label>
+                <input type="text" id="newUsername" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+            </div>
+            <div>
+                <label for="newPassword" class="block text-gray-700 text-sm font-bold mb-2">Senha:</label>
+                <input type="password" id="newPassword" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+            </div>
+            <div>
+                <label for="newRole" class="block text-gray-700 text-sm font-bold mb-2">Função:</label>
+                <select id="newRole" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <div class="md:col-span-2 flex justify-end">
+                <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Adicionar Usuário
+                </button>
+            </div>
+            <p id="addUserMessage" class="md:col-span-2 text-sm italic mt-2"></p>
+        </form>
+    </div>
+
+    <!-- User List -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+    <h3 class="text-xl font-semibold mb-4">Usuários Existentes</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead>
+                    <tr>
+                        <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID</th>
+                        <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nome</th>
+                        <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Função</th>
+                        <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                    <!-- Users will be loaded here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+        <p id="userListMessage" class="text-sm italic mt-4"></p>
+    </div>
+</div>
+
+<script>
+    const addUserForm = document.getElementById('addUserForm');
+    const userTableBody = document.getElementById('userTableBody');
+    const addUserMessage = document.getElementById('addUserMessage');
+    const userListMessage = document.getElementById('userListMessage');
+
+    async function fetchUsers() {
+        try {
+            const response = await fetch('../api/users.php');
+            const data = await response.json();
+
+            userTableBody.innerHTML = ''; // Clear existing users
+
+            if (data.success && data.users.length > 0) {
+                data.users.forEach(user => {
+                    const row = userTableBody.insertRow();
+                    row.innerHTML = `
+                        <td class="py-2 px-4 border-b border-gray-200">${user.id}</td>
+                        <td class="py-2 px-4 border-b border-gray-200">${user.username}</td>
+                        <td class="py-2 px-4 border-b border-gray-200">${user.role}</td>
+                        <td class="py-2 px-4 border-b border-gray-200">
+                            <button class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-xs mr-2 mb-1 edit-user-btn" data-id="${user.id}" data-username="${user.username}" data-role="${user.role}">Editar</button>
+                            <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs mb-1 delete-user-btn" data-id="${user.id}">Deletar</button>
+                        </td>
+                    `;
+                });
+                userListMessage.textContent = '';
+            } else if (data.success && data.users.length === 0) {
+                userListMessage.textContent = 'Nenhum usuário encontrado.';
+            } else {
+                userListMessage.textContent = data.message || 'Falha ao carregar usuários.';
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error);
+            userListMessage.textContent = 'Ocorreu um erro ao buscar os usuários.';
+        }
+    }
+
+    addUserForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        addUserMessage.textContent = '';
+
+        const username = document.getElementById('newUsername').value;
+        const password = document.getElementById('newPassword').value;
+        const role = document.getElementById('newRole').value;
+
+        try {
+            const response = await fetch('../api/users.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password, role })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                    addUserMessage.textContent = 'Usuário adicionado com sucesso!';
+                addUserMessage.classList.remove('text-red-500');
+                addUserMessage.classList.add('text-green-500');
+                addUserForm.reset();
+                fetchUsers(); // Refresh the list
+            } else {
+                addUserMessage.textContent = data.message || 'Falha ao adicionar usuário.';
+                addUserMessage.classList.remove('text-green-500');
+                addUserMessage.classList.add('text-red-500');
+            }
+        } catch (error) {
+            console.error('Error adding user:', error);
+            addUserMessage.textContent = 'Ocorreu um erro ao adicionar o usuário.';
+            addUserMessage.classList.remove('text-green-500');
+            addUserMessage.classList.add('text-red-500');
+        }
+    });
+
+    userTableBody.addEventListener('click', async function(event) {
+        if (event.target.classList.contains('delete-user-btn')) {
+            const userId = event.target.dataset.id;
+            if (confirm(`Tem certeza que deseja deletar o usuário com ID ${userId}?`)) {
+                try {
+                    const response = await fetch(`../api/users.php?id=${userId}`, {
+                        method: 'DELETE'
+                    });
+                    const data = await response.json();
+
+                    if (data.success) {
+                                    alert('Usuário deletado com sucesso!');
+                        fetchUsers(); // Refresh the list
+                    } else {
+                        alert('Falha ao deletar usuário: ' + (data.message || 'Erro desconhecido.'));
+                    }
+                } catch (error) {
+                    console.error('Error deleting user:', error);
+                    alert('Ocorreu um erro ao deletar o usuário.');
+                }
+            }
+        } else if (event.target.classList.contains('edit-user-btn')) {
+            const userId = event.target.dataset.id;
+            const currentUsername = event.target.dataset.username;
+            const currentRole = event.target.dataset.role;
+
+            const newUsername = prompt(`Editar nome de usuário para ID ${userId}:`, currentUsername);
+            if (newUsername === null) return; // User cancelled
+
+            const newPassword = prompt(`Digite a nova senha para ID ${userId} (deixe em branco para manter a atual):`);
+            // If newPassword is null, user cancelled. If it's an empty string, they want to keep current.
+
+            const newRole = prompt(`Editar função para ID ${userId} (atual: ${currentRole}, digite 'admin' ou 'user'):`, currentRole);
+            if (newRole === null) return; // User cancelled
+
+            if (!['admin', 'user'].includes(newRole)) {
+                alert('Função inválida. Digite "admin" ou "user".');
+                return;
+            }
+
+            const updateData = {
+                username: newUsername,
+                role: newRole
+            };
+            if (newPassword !== '') { // Only include password if it's not empty
+                updateData.password = newPassword;
+            }
+
+            try {
+                const response = await fetch(`../api/users.php?id=${userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updateData)
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Usuário atualizado com sucesso!');
+                    fetchUsers(); // Refresh the list
+                } else {
+                    alert('Falha ao atualizar usuário: ' + (data.message || 'Erro desconhecido.'));
+                }
+            } catch (error) {
+                console.error('Error updating user:', error);
+                alert('Ocorreu um erro ao atualizar o usuário.');
+            }
+        }
+    });
+
+    fetchUsers(); // Initial load
+</script>

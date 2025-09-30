@@ -1,2 +1,0 @@
-id;nome;email0;;
-0;pedro;pedrinho@gmail.com

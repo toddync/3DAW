@@ -1,0 +1,62 @@
+<div class="container mx-auto mt-8 p-4">
+    <h2 class="text-3xl font-bold mb-6 text-gray-800">Respostas Enviadas</h2>
+
+    <div id="answersContainer" class="bg-white p-6 rounded-lg shadow-md">
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white" id="answersTable">
+                <thead>
+                    <tr>
+                        <th class="py-2 px-4 border-b">ID</th>
+                        <th class="py-2 px-4 border-b">Questão</th>
+                        <th class="py-2 px-4 border-b">Tipo</th>
+                        <th class="py-2 px-4 border-b">Usuário</th>
+                        <th class="py-2 px-4 border-b">Resposta</th>
+                        <th class="py-2 px-4 border-b">Correta?</th>
+                        <th class="py-2 px-4 border-b">Data/Hora</th>
+                    </tr>
+                </thead>
+                <tbody id="answersTableBody"></tbody>
+            </table>
+        </div>
+        <p id="answersMessage" class="text-sm italic mt-4"></p>
+    </div>
+</div>
+
+<script>
+    const answersTableBody = document.getElementById('answersTableBody');
+    const answersMessage = document.getElementById('answersMessage');
+
+    async function fetchAnswers() {
+        try {
+            const response = await fetch('../api/answers.php');
+            const data = await response.json();
+
+            answersTableBody.innerHTML = '';
+
+            if (data.success && data.answers && data.answers.length > 0) {
+                data.answers.forEach(ans => {
+                    const row = answersTableBody.insertRow();
+                    row.innerHTML = `
+                        <td class="py-2 px-4 border-b">${ans.id}</td>
+                        <td class="py-2 px-4 border-b">${ans.question || 'N/D'}</td>
+                        <td class="py-2 px-4 border-b">${ans.question_type === 'multiple_choice' ? 'Múltipla Escolha' : (ans.question_type === 'text' ? 'Texto' : (ans.question_type || 'N/D'))}</td>
+                        <td class="py-2 px-4 border-b">${ans.username || ans.user_id}</td>
+                        <td class="py-2 px-4 border-b">${ans.answer}</td>
+                        <td class="py-2 px-4 border-b">${ans.is_correct ? 'Sim' : 'Não'}</td>
+                        <td class="py-2 px-4 border-b">${ans.timestamp}</td>
+                    `;
+                });
+                answersMessage.textContent = '';
+            } else if (data.success && data.answers && data.answers.length === 0) {
+                answersMessage.textContent = 'Nenhuma resposta encontrada.';
+            } else {
+                answersMessage.textContent = data.message || 'Falha ao carregar respostas.';
+            }
+        } catch (error) {
+            console.error('Error fetching answers:', error);
+            answersMessage.textContent = 'Ocorreu um erro ao buscar as respostas.';
+        }
+    }
+
+    fetchAnswers();
+</script>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link href="./assets/css/style.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-blue-600 p-4 text-white shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Jogo Corporativo</h1>
+            <div class="flex items-center space-x-4">
+                <span id="welcomeMessage" class="text-lg"></span>
+                <button id="logoutButton" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Sair
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto mt-8 p-4">
+        <div id="adminDashboard" class="hidden">
+            <h2 class="text-3xl font-bold mb-6 text-gray-800">Painel do Administrador</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- User Management Card -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-4">Gerenciamento de Usuários</h3>
+                    <p class="text-gray-600 mb-4">Criar, visualizar, editar e excluir contas de usuário.</p>
+                    <button id="manageUsersButton" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                        Gerenciar Usuários
+                    </button>
+                </div>
+                <!-- Question Management Card -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-4">Gerenciamento de Questões</h3>
+                    <p class="text-gray-600 mb-4">Criar, visualizar, editar e excluir questões.</p>
+                    <button id="manageQuestionsButton" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                        Gerenciar Questões
+                    </button>
+                </div>
+                <!-- Answers Management Card -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-4">Respostas</h3>
+                    <p class="text-gray-600 mb-4">Visualizar respostas enviadas pelos usuários.</p>
+                    <button id="viewAnswersButton" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                        Ver Respostas
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="userDashboard" class="hidden">
+            <h2 class="text-3xl font-bold mb-6 text-gray-800">Painel do Usuário</h2>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-semibold mb-4">Responder Questões</h3>
+                <p class="text-gray-600 mb-4">Participe dos desafios respondendo às questões.</p>
+                <button id="answerQuestionsButton" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Começar a Responder
+                </button>
+            </div>
+        </div>
+
+        <div id="contentArea" class="mt-8 bg-white p-6 rounded-lg shadow-md hidden">
+            <!-- Dynamic content will be loaded here -->
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const welcomeMessage = document.getElementById('welcomeMessage');
+            const logoutButton = document.getElementById('logoutButton');
+            const adminDashboard = document.getElementById('adminDashboard');
+            const userDashboard = document.getElementById('userDashboard');
+            const contentArea = document.getElementById('contentArea');
+
+            // Check session status
+            try {
+                const response = await fetch('../api/session.php');
+                const data = await response.json();
+
+                if (!data.logged_in) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                welcomeMessage.textContent = `Bem-vindo, ${data.user.username} (${data.user.role})`;
+
+                if (data.user.role === 'admin') {
+                    adminDashboard.classList.remove('hidden');
+                } else if (data.user.role === 'user') {
+                    userDashboard.classList.remove('hidden');
+                }
+
+            } catch (error) {
+                console.error('Error checking session:', error);
+                window.location.href = 'login.html'; // Redirect on error
+            }
+
+            // Logout functionality
+            logoutButton.addEventListener('click', async () => {
+                try {
+                    const response = await fetch('../api/logout.php');
+                    const data = await response.json();
+                    if (data.success) {
+                        window.location.href = 'login.html';
+                    } else {
+                        alert('Falha ao sair: ' + data.message);
+                    }
+                } catch (error) {
+                    console.error('Error during logout:', error);
+                    alert('An error occurred during logout.');
+                }
+            });
+
+            // Helper to load HTML into the content area and execute any scripts inside it.
+            // This fixes the issue where scripts inside fetched HTML do not run when inserted via innerHTML.
+            async function loadAndMount(url) {
+                contentArea.classList.remove('hidden');
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`Failed to load ${url}: ${response.status}`);
+                    const text = await response.text();
+
+                    // Parse the returned HTML so we can extract and run scripts separately
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(text, 'text/html');
+
+                    // Extract scripts and remove them from the HTML we'll insert
+                    const scripts = Array.from(doc.querySelectorAll('script'));
+                    scripts.forEach(s => s.parentNode && s.parentNode.removeChild(s));
+
+                    // Insert the HTML (without scripts)
+                    contentArea.innerHTML = doc.body.innerHTML;
+
+                    // Re-insert and execute scripts in order
+                    for (const oldScript of scripts) {
+                        const newScript = document.createElement('script');
+                        // copy attributes (type, src, module, async, etc.)
+                        for (const attr of oldScript.attributes) {
+                            newScript.setAttribute(attr.name, attr.value);
+                        }
+                        // inline script text
+                        if (oldScript.textContent) newScript.text = oldScript.textContent;
+
+                        // append to contentArea so any selectors inside script can find the mounted DOM
+                        contentArea.appendChild(newScript);
+
+                        // if the script has a src, wait for it to load before continuing to preserve ordering
+                        if (newScript.src) {
+                            await new Promise((resolve, reject) => {
+                                newScript.onload = resolve;
+                                newScript.onerror = () => reject(new Error('Failed to load script: ' + newScript.src));
+                            });
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading content:', error);
+                    contentArea.innerHTML = '<p class="text-red-500">Failed to load content. Please try again.</p>';
+                }
+            }
+
+            document.getElementById('manageUsersButton').addEventListener('click', () => loadAndMount('admin_users.html'));
+            document.getElementById('manageQuestionsButton').addEventListener('click', () => loadAndMount('admin_questions.html'));
+            const viewAnswersBtn = document.getElementById('viewAnswersButton');
+            if (viewAnswersBtn) viewAnswersBtn.addEventListener('click', () => loadAndMount('answers.html'));
+            document.getElementById('answerQuestionsButton').addEventListener('click', () => loadAndMount('user_answer_questions.html'));
+        });
+    </script>
+</body>
+</html>

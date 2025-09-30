@@ -1,0 +1,2 @@
+1,admin,$2y$12$DuwUN7Xtd/w/QYe/1B94QevOzmrT8yJVPSwszevlyLHKsFBOG1X1G,admin
+2,user,$2y$12$3Q3qPQ6bh7b2q0PKgJexzuLFS60tO8Z1GmF3R4AAVesyDTngRkhG6,user

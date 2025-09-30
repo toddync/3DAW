@@ -1,0 +1,260 @@
+
+<div class="container mx-auto mt-8 p-4">
+    <h2 class="text-3xl font-bold mb-6 text-gray-800">Gerenciar Questões</h2>
+
+    <!-- Add New Question Form -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+    <h3 class="text-xl font-semibold mb-4">Adicionar Nova Questão</h3>
+        <form id="addQuestionForm" class="grid grid-cols-1 gap-4">
+            <div>
+                <label for="newQuestionType" class="block text-gray-700 text-sm font-bold mb-2">Tipo de Questão:</label>
+                <select id="newQuestionType" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    <option value="text">Texto</option>
+                    <option value="multiple_choice">Múltipla Escolha</option>
+                </select>
+            </div>
+            <div>
+                <label for="newQuestionText" class="block text-gray-700 text-sm font-bold mb-2">Enunciado da Questão:</label>
+                <textarea id="newQuestionText" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="3" required></textarea>
+            </div>
+            <div id="multipleChoiceOptions" class="hidden">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Opções:</label>
+                <input type="text" id="newOptionA" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2" placeholder="Opção A">
+                <input type="text" id="newOptionB" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2" placeholder="Opção B">
+                <input type="text" id="newOptionC" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2" placeholder="Opção C">
+                <input type="text" id="newOptionD" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2" placeholder="Opção D">
+                <input type="text" id="newOptionE" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Opção E">
+            </div>
+            <div>
+                <label for="newCorrectAnswer" class="block text-gray-700 text-sm font-bold mb-2">Resposta Correta:</label>
+                <input type="text" id="newCorrectAnswer" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+            </div>
+            <div class="flex justify-end">
+                <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Adicionar Questão
+                </button>
+            </div>
+            <p id="addQuestionMessage" class="text-sm italic mt-2"></p>
+        </form>
+    </div>
+
+    <!-- Question List -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+    <h3 class="text-xl font-semibold mb-4">Questões Existentes</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead>
+                    <tr>
+                        <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID</th>
+                        <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
+                        <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Question</th>
+                        <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Correct Answer</th>
+                        <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="questionTableBody">
+                    <!-- Questions will be loaded here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+        <p id="questionListMessage" class="text-sm italic mt-4"></p>
+    </div>
+</div>
+
+<script>
+    const addQuestionForm = document.getElementById('addQuestionForm');
+    const newQuestionType = document.getElementById('newQuestionType');
+    const multipleChoiceOptions = document.getElementById('multipleChoiceOptions');
+    const questionTableBody = document.getElementById('questionTableBody');
+    const addQuestionMessage = document.getElementById('addQuestionMessage');
+    const questionListMessage = document.getElementById('questionListMessage');
+
+    newQuestionType.addEventListener('change', () => {
+        console.log(newQuestionType.value)
+        if (newQuestionType.value === 'multiple_choice') {
+            multipleChoiceOptions.classList.remove('hidden');
+        } else {
+            multipleChoiceOptions.classList.add('hidden');
+        }
+    });
+
+    async function fetchQuestions() {
+        try {
+            const response = await fetch('../api/questions.php');
+            const data = await response.json();
+
+            console.log(data);
+
+            questionTableBody.innerHTML = ''; // Clear existing questions
+
+                if (data.success && data.questions.length > 0) {
+                data.questions.forEach(question => {
+                    const row = questionTableBody.insertRow();
+                    let optionsDisplay = '';
+                    if (question.type === 'multiple_choice' && question.options) {
+                        optionsDisplay = question.options.map((opt, idx) => `${String.fromCharCode(65 + idx)}. ${opt}`).join(', ');
+                        optionsDisplay = `(${optionsDisplay})`;
+                    }
+                    row.innerHTML = `
+                        <td class="py-2 px-4 border-b border-gray-200">${question.id}</td>
+                        <td class="py-2 px-4 border-b border-gray-200">${question.type}</td>
+                        <td class="py-2 px-4 border-b border-gray-200">${question.question} ${optionsDisplay}</td>
+                        <td class="py-2 px-4 border-b border-gray-200">${question.correct_answer}</td>
+                        <td class="py-2 px-4 border-b border-gray-200">
+                            <button class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-xs mr-2 mb-1 edit-question-btn"
+                                data-id="${question.id}"
+                                data-type="${question.type}"
+                                data-question="${question.question}"
+                                data-option-a="${(question.options && question.options[0]) || ''}"
+                                data-option-b="${(question.options && question.options[1]) || ''}"
+                                data-option-c="${(question.options && question.options[2]) || ''}"
+                                data-option-d="${(question.options && question.options[3]) || ''}"
+                                data-option-e="${(question.options && question.options[4]) || ''}"
+                                data-correct-answer="${question.correct_answer}">Edit</button>
+                            <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs mb-1 delete-question-btn" data-id="${question.id}" data-type="${question.type}">Delete</button>
+                        </td>
+                    `;
+                });
+                questionListMessage.textContent = '';
+            } else if (data.success && data.questions.length === 0) {
+                questionListMessage.textContent = 'Nenhuma questão encontrada.';
+            } else {
+                questionListMessage.textContent = data.message || 'Falha ao carregar questões.';
+            }
+        } catch (error) {
+            console.error('Error fetching questions:', error);
+              questionListMessage.textContent = 'Ocorreu um erro ao buscar as questões.';
+        }
+    }
+
+    addQuestionForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        addQuestionMessage.textContent = '';
+
+        const type = document.getElementById('newQuestionType').value;
+        const question = document.getElementById('newQuestionText').value;
+        let options = [];
+        if (type === 'multiple_choice') {
+            options.push(document.getElementById('newOptionA').value.trim());
+            options.push(document.getElementById('newOptionB').value.trim());
+            options.push(document.getElementById('newOptionC').value.trim());
+            options.push(document.getElementById('newOptionD').value.trim());
+            options.push(document.getElementById('newOptionE').value.trim());
+        }
+        const correctAnswer = document.getElementById('newCorrectAnswer').value;
+
+        const postData = { type, question, correct_answer: correctAnswer };
+        if (type === 'multiple_choice') {
+            postData.options = options;
+        }
+
+        try {
+            const response = await fetch('../api/questions.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(postData)
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                addQuestionMessage.textContent = 'Questão adicionada com sucesso!';
+                addQuestionMessage.classList.remove('text-red-500');
+                addQuestionMessage.classList.add('text-green-500');
+                addQuestionForm.reset();
+                multipleChoiceOptions.classList.add('hidden'); // Hide options after reset
+                fetchQuestions(); // Refresh the list
+            } else {
+                addQuestionMessage.textContent = data.message || 'Falha ao adicionar questão.';
+                addQuestionMessage.classList.remove('text-green-500');
+                addQuestionMessage.classList.add('text-red-500');
+            }
+        } catch (error) {
+            console.error('Error adding question:', error);
+                addQuestionMessage.textContent = 'Ocorreu um erro ao adicionar a questão.';
+            addQuestionMessage.classList.remove('text-green-500');
+            addQuestionMessage.classList.add('text-red-500');
+        }
+    });
+
+    questionTableBody.addEventListener('click', async function(event) {
+        if (event.target.classList.contains('delete-question-btn')) {
+            const questionId = event.target.dataset.id;
+            const questionType = event.target.dataset.type;
+            if (confirm(`Tem certeza que deseja deletar a questão ID ${questionId} (${questionType})?`)) {
+                try {
+                    const response = await fetch(`../api/questions.php?id=${questionId}&type=${questionType}`, {
+                        method: 'DELETE'
+                    });
+                    const data = await response.json();
+
+                    if (data.success) {
+                        alert('Questão deletada com sucesso!');
+                        fetchQuestions(); // Refresh the list
+                    } else {
+                        alert('Falha ao deletar questão: ' + (data.message || 'Erro desconhecido.'));
+                    }
+                } catch (error) {
+                    console.error('Error deleting question:', error);
+                    alert('Ocorreu um erro ao deletar a questão.');
+                }
+            }
+        } else if (event.target.classList.contains('edit-question-btn')) {
+            const questionId = event.target.dataset.id;
+            const currentType = event.target.dataset.type;
+            const currentQuestionText = event.target.dataset.question;
+            const currentOptions = event.target.dataset.options;
+            const currentCorrectAnswer = event.target.dataset.correctAnswer;
+
+            const newQuestionText = prompt(`Editar enunciado da questão para ID ${questionId}:`, currentQuestionText);
+            if (newQuestionText === null) return;
+
+            let newOptions = [];
+            if (currentType === 'multiple_choice') {
+                const optionA = prompt(`Editar Opção A para ID ${questionId}:`, event.target.dataset.optionA);
+                if (optionA === null) return;
+                const optionB = prompt(`Editar Opção B para ID ${questionId}:`, event.target.dataset.optionB);
+                if (optionB === null) return;
+                const optionC = prompt(`Editar Opção C para ID ${questionId}:`, event.target.dataset.optionC);
+                if (optionC === null) return;
+                const optionD = prompt(`Editar Opção D para ID ${questionId}:`, event.target.dataset.optionD);
+                if (optionD === null) return;
+                const optionE = prompt(`Editar Opção E para ID ${questionId}:`, event.target.dataset.optionE);
+                if (optionE === null) return;
+                newOptions = [optionA, optionB, optionC, optionD, optionE];
+            }
+
+            const newCorrectAnswer = prompt(`Editar resposta correta para ID ${questionId}:`, currentCorrectAnswer);
+            if (newCorrectAnswer === null) return;
+
+            const updateData = {
+                type: currentType,
+                question: newQuestionText,
+                correct_answer: newCorrectAnswer
+            };
+            if (currentType === 'multiple_choice') {
+                updateData.options = newOptions;
+            }
+
+            try {
+                const response = await fetch(`../api/questions.php?id=${questionId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updateData)
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Questão atualizada com sucesso!');
+                    fetchQuestions(); // Refresh the list
+                } else {
+                    alert('Falha ao atualizar questão: ' + (data.message || 'Erro desconhecido.'));
+                }
+            } catch (error) {
+                console.error('Error updating question:', error);
+                alert('Ocorreu um erro ao atualizar a questão.');
+            }
+        }
+    });
+
+    fetchQuestions(); // Initial load
+</script>
